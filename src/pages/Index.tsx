@@ -7,6 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search, Grid, Calendar, MapPin, Users, Heart } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useNavigate } from "react-router-dom";
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay, isSameDay, parseISO } from "date-fns";
 
 interface Event {
   id: string;
@@ -20,6 +22,7 @@ interface Event {
   organizer_id: string;
   category_id?: string;
   tags?: string[];
+  attendee_count?: number;
 }
 
 interface Profile {
@@ -33,7 +36,11 @@ const Index = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [loading, setLoading] = useState(true);
+  const [viewMode, setViewMode] = useState<'grid' | 'calendar'>('grid');
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [registeredEvents, setRegisteredEvents] = useState<Set<string>>(new Set());
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -52,15 +59,36 @@ const Index = () => {
           }
         }
 
-        // Get events
+        // Get events with attendee counts
         const { data: eventsData, error } = await supabase
           .from('events')
-          .select('*')
+          .select(`
+            *,
+            event_attendees(count)
+          `)
           .gte('end_date', new Date().toISOString())
           .order('start_date', { ascending: true });
 
         if (error) throw error;
-        setEvents(eventsData || []);
+        
+        const eventsWithCounts = eventsData?.map(event => ({
+          ...event,
+          attendee_count: event.event_attendees?.[0]?.count || 0
+        })) || [];
+        
+        setEvents(eventsWithCounts);
+
+        // Get user's registered events
+        if (user) {
+          const { data: attendeeData } = await supabase
+            .from('event_attendees')
+            .select('event_id')
+            .eq('user_id', user.id);
+          
+          if (attendeeData) {
+            setRegisteredEvents(new Set(attendeeData.map(a => a.event_id)));
+          }
+        }
       } catch (error) {
         console.error('Error fetching data:', error);
         toast({
@@ -85,6 +113,174 @@ const Index = () => {
       hour: '2-digit',
       minute: '2-digit'
     });
+  };
+
+  const handleRegisterEvent = async (eventId: string, maxAttendees?: number, currentCount = 0) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({
+          title: "Authentication required",
+          description: "Please sign in to register for events",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (maxAttendees && currentCount >= maxAttendees) {
+        toast({
+          title: "Event is full",
+          description: "This event has reached maximum capacity",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const isRegistered = registeredEvents.has(eventId);
+
+      if (isRegistered) {
+        // Unregister
+        const { error } = await supabase
+          .from('event_attendees')
+          .delete()
+          .eq('event_id', eventId)
+          .eq('user_id', user.id);
+
+        if (error) throw error;
+
+        setRegisteredEvents(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(eventId);
+          return newSet;
+        });
+
+        setEvents(prev => prev.map(event => 
+          event.id === eventId 
+            ? { ...event, attendee_count: Math.max(0, (event.attendee_count || 0) - 1) }
+            : event
+        ));
+
+        toast({
+          title: "Unregistered",
+          description: "You have been unregistered from the event",
+        });
+      } else {
+        // Register
+        const { error } = await supabase
+          .from('event_attendees')
+          .insert({ event_id: eventId, user_id: user.id });
+
+        if (error) throw error;
+
+        setRegisteredEvents(prev => new Set([...prev, eventId]));
+        setEvents(prev => prev.map(event => 
+          event.id === eventId 
+            ? { ...event, attendee_count: (event.attendee_count || 0) + 1 }
+            : event
+        ));
+
+        toast({
+          title: "Registered",
+          description: "You have been registered for the event",
+        });
+      }
+    } catch (error) {
+      console.error('Error handling registration:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update registration",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const renderCalendarView = () => {
+    const monthStart = startOfMonth(currentDate);
+    const monthEnd = endOfMonth(currentDate);
+    const daysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd });
+    
+    const startPadding = getDay(monthStart);
+    const paddingDays = Array.from({ length: startPadding }, (_, i) => new Date(monthStart.getTime() - (startPadding - i) * 24 * 60 * 60 * 1000));
+    
+    const allDays = [...paddingDays, ...daysInMonth];
+    
+    const getEventsForDay = (day: Date) => {
+      return filteredEvents.filter(event => 
+        isSameDay(parseISO(event.start_date), day)
+      );
+    };
+
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Button
+              variant="outline"
+              onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1))}
+            >
+              Back
+            </Button>
+            <h2 className="text-xl font-semibold">
+              {format(currentDate, 'MMMM yyyy')}
+            </h2>
+            <Button
+              variant="outline"
+              onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1))}
+            >
+              Next
+            </Button>
+          </div>
+          <div className="flex gap-2">
+            <Button
+              variant={viewMode === 'calendar' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setViewMode('calendar')}
+            >
+              Month
+            </Button>
+            <Button variant="outline" size="sm">Week</Button>
+            <Button variant="outline" size="sm">Day</Button>
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-7 gap-0 border border-border rounded-lg overflow-hidden">
+          {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+            <div key={day} className="p-4 bg-muted text-center font-medium border-b">
+              {day}
+            </div>
+          ))}
+          
+          {allDays.map((day, index) => {
+            const isCurrentMonth = day.getMonth() === currentDate.getMonth();
+            const dayEvents = getEventsForDay(day);
+            
+            return (
+              <div
+                key={index}
+                className={`min-h-[120px] p-2 border-b border-r border-border ${
+                  !isCurrentMonth ? 'bg-muted/50 text-muted-foreground' : 'bg-background'
+                }`}
+              >
+                <div className="font-medium mb-2">
+                  {format(day, 'd')}
+                </div>
+                <div className="space-y-1">
+                  {dayEvents.map(event => (
+                    <div
+                      key={event.id}
+                      className="text-xs p-1 bg-primary/10 text-primary rounded cursor-pointer hover:bg-primary/20"
+                      onClick={() => navigate(`/event/${event.id}`)}
+                    >
+                      {event.title}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
   };
 
   const filteredEvents = events.filter(event => 
@@ -144,86 +340,116 @@ const Index = () => {
       {/* View Toggle */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm">
+          <Button 
+            variant={viewMode === 'grid' ? 'default' : 'outline'} 
+            size="sm"
+            onClick={() => setViewMode('grid')}
+          >
             <Grid className="h-4 w-4 mr-2" />
             Grid View
           </Button>
-          <Button variant="ghost" size="sm">
+          <Button 
+            variant={viewMode === 'calendar' ? 'default' : 'outline'} 
+            size="sm"
+            onClick={() => setViewMode('calendar')}
+          >
             <Calendar className="h-4 w-4 mr-2" />
             Calendar View
           </Button>
         </div>
       </div>
 
-      {/* Events Grid */}
-      {filteredEvents.length === 0 ? (
-        <div className="text-center py-12">
-          <p className="text-muted-foreground">No events found. Check back later!</p>
-        </div>
+      {/* Events Display */}
+      {viewMode === 'calendar' ? (
+        renderCalendarView()
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredEvents.map((event) => (
-            <Card key={event.id} className="border-campus-border hover:shadow-lg transition-shadow">
-              {event.image_url && (
-                <div className="aspect-video w-full overflow-hidden rounded-t-lg">
-                  <img 
-                    src={event.image_url} 
-                    alt={event.title}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-              )}
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between">
-                  <CardTitle className="text-lg leading-tight">{event.title}</CardTitle>
-                  <Button variant="ghost" size="sm">
-                    <Heart className="h-4 w-4" />
-                  </Button>
-                </div>
-                <CardDescription className="line-clamp-2">
-                  {event.description}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="space-y-2 text-sm text-muted-foreground">
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4" />
-                    <span>{formatDate(event.start_date)}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <MapPin className="h-4 w-4" />
-                    <span>{event.location}</span>
-                  </div>
-                  {event.max_attendees && (
-                    <div className="flex items-center gap-2">
-                      <Users className="h-4 w-4" />
-                      <span>Max {event.max_attendees} attendees</span>
+        filteredEvents.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-muted-foreground">No events found. Check back later!</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredEvents.map((event) => {
+              const isRegistered = registeredEvents.has(event.id);
+              const isFull = event.max_attendees && (event.attendee_count || 0) >= event.max_attendees;
+              
+              return (
+                <Card key={event.id} className="border-campus-border hover:shadow-lg transition-shadow">
+                  {event.image_url && (
+                    <div className="aspect-video w-full overflow-hidden rounded-t-lg">
+                      <img 
+                        src={event.image_url} 
+                        alt={event.title}
+                        className="w-full h-full object-cover"
+                      />
                     </div>
                   )}
-                </div>
-                
-                {event.tags && event.tags.length > 0 && (
-                  <div className="flex flex-wrap gap-1">
-                    {event.tags.slice(0, 2).map((tag, index) => (
-                      <Badge key={index} variant="secondary" className="text-xs">
-                        {tag}
-                      </Badge>
-                    ))}
-                  </div>
-                )}
-                
-                <div className="flex gap-2 pt-2">
-                  <Button className="flex-1 bg-campus-primary hover:bg-campus-primary/90">
-                    Attending
-                  </Button>
-                  <Button variant="outline" className="flex-1">
-                    View Details
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+                  <CardHeader className="pb-3">
+                    <div className="flex items-start justify-between">
+                      <CardTitle className="text-lg leading-tight">{event.title}</CardTitle>
+                      <Button variant="ghost" size="sm">
+                        <Heart className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <CardDescription className="line-clamp-2">
+                      {event.description}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="space-y-2 text-sm text-muted-foreground">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4" />
+                        <span>{formatDate(event.start_date)}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <MapPin className="h-4 w-4" />
+                        <span>{event.location}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Users className="h-4 w-4" />
+                        <span>
+                          {event.attendee_count || 0}
+                          {event.max_attendees ? ` / ${event.max_attendees}` : ''} attendees
+                        </span>
+                      </div>
+                    </div>
+                    
+                    {event.tags && event.tags.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {event.tags.slice(0, 2).map((tag, index) => (
+                          <Badge key={index} variant="secondary" className="text-xs">
+                            {tag}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                    
+                    <div className="flex gap-2 pt-2">
+                      <Button 
+                        className={`flex-1 ${
+                          isRegistered 
+                            ? 'bg-destructive hover:bg-destructive/90' 
+                            : 'bg-campus-primary hover:bg-campus-primary/90'
+                        }`}
+                        disabled={!isRegistered && isFull}
+                        onClick={() => handleRegisterEvent(event.id, event.max_attendees, event.attendee_count)}
+                      >
+                        {isFull && !isRegistered ? 'Event Full' : isRegistered ? 'Unregister' : 'Register'}
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        className="flex-1"
+                        onClick={() => navigate(`/event/${event.id}`)}
+                      >
+                        View Details
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        )
       )}
     </div>
   );

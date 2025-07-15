@@ -12,6 +12,7 @@ import Favorites from "./pages/Favorites";
 import PastEvents from "./pages/PastEvents";
 import CreateEvent from "./pages/CreateEvent";
 import EventDetails from "./pages/EventDetails";
+import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -47,7 +48,7 @@ const App = () => (
             } />
             <Route path="/profile" element={
               <AppLayout>
-                <div>Profile Page - Coming Soon</div>
+                <Profile />
               </AppLayout>
             } />
             <Route path="/create-event" element={
@@ -55,7 +56,7 @@ const App = () => (
                 <CreateEvent />
               </AppLayout>
             } />
-            <Route path="/events/:eventId" element={
+            <Route path="/event/:eventId" element={
               <AppLayout>
                 <EventDetails />
               </AppLayout>

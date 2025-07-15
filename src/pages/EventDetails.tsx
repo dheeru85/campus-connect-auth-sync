@@ -35,6 +35,17 @@ interface Discussion {
   };
 }
 
+interface Attendee {
+  id: string;
+  user_id: string;
+  registered_at: string;
+  profiles: {
+    full_name: string;
+    role: string;
+    avatar_url?: string;
+  };
+}
+
 interface Profile {
   full_name: string;
   role: 'admin' | 'user';
@@ -45,6 +56,7 @@ const EventDetails = () => {
   const navigate = useNavigate();
   const [event, setEvent] = useState<Event | null>(null);
   const [discussions, setDiscussions] = useState<Discussion[]>([]);
+  const [attendees, setAttendees] = useState<Attendee[]>([]);
   const [newComment, setNewComment] = useState("");
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -55,6 +67,7 @@ const EventDetails = () => {
     if (eventId) {
       fetchEventDetails();
       fetchDiscussions();
+      fetchAttendees();
       fetchUserProfile();
     }
   }, [eventId]);
@@ -97,6 +110,28 @@ const EventDetails = () => {
       setDiscussions(data || []);
     } catch (error) {
       console.error('Error fetching discussions:', error);
+    }
+  };
+
+  const fetchAttendees = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('event_attendees')
+        .select(`
+          *,
+          profiles (
+            full_name,
+            role,
+            avatar_url
+          )
+        `)
+        .eq('event_id', eventId)
+        .order('registered_at', { ascending: true });
+
+      if (error) throw error;
+      setAttendees(data || []);
+    } catch (error) {
+      console.error('Error fetching attendees:', error);
     }
   };
 
@@ -310,6 +345,57 @@ const EventDetails = () => {
             </CardContent>
           </Card>
         )}
+
+        {/* Registered Attendees */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              Registered Attendees ({attendees.length})
+            </CardTitle>
+            <CardDescription>
+              People who have registered for this event
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {attendees.length === 0 ? (
+              <p className="text-muted-foreground text-center py-4">
+                No attendees registered yet
+              </p>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {attendees.map((attendee) => (
+                  <div key={attendee.id} className="flex items-center gap-3 p-3 border rounded-lg">
+                    <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
+                      {attendee.profiles.avatar_url ? (
+                        <img 
+                          src={attendee.profiles.avatar_url} 
+                          alt={attendee.profiles.full_name}
+                          className="h-10 w-10 rounded-full object-cover"
+                        />
+                      ) : (
+                        <span className="text-sm font-medium">
+                          {attendee.profiles.full_name.charAt(0).toUpperCase()}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{attendee.profiles.full_name}</span>
+                        {attendee.profiles.role === 'admin' && (
+                          <Badge variant="secondary" className="text-xs">Admin</Badge>
+                        )}
+                      </div>
+                      <span className="text-xs text-muted-foreground">
+                        Registered on {format(new Date(attendee.registered_at), "MMM dd, yyyy")}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Admin Video Upload (for past events) */}
         {isPastEvent && profile?.role === 'admin' && (
