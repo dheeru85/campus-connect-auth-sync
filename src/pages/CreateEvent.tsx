@@ -1,4 +1,5 @@
 import { useState } from "react";
+import ImageUpload from "@/components/ImageUpload";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -29,6 +30,20 @@ const CreateEvent = () => {
     setFormData(prev => ({
       ...prev,
       [name]: value
+    }));
+  };
+
+  const handleImageUploaded = (url: string) => {
+    setFormData(prev => ({
+      ...prev,
+      image_url: url
+    }));
+  };
+
+  const handleImageRemoved = () => {
+    setFormData(prev => ({
+      ...prev,
+      image_url: ""
     }));
   };
 
@@ -221,19 +236,12 @@ const CreateEvent = () => {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="image_url">Event Image URL</Label>
-              <div className="relative">
-                <Image className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="image_url"
-                  name="image_url"
-                  type="url"
-                  value={formData.image_url}
-                  onChange={handleInputChange}
-                  placeholder="https://example.com/image.jpg"
-                  className="pl-10"
-                />
-              </div>
+              <Label>Event Image</Label>
+              <ImageUpload
+                onImageUploaded={handleImageUploaded}
+                currentImage={formData.image_url}
+                onImageRemoved={handleImageRemoved}
+              />
             </div>
 
             <div className="space-y-2">
