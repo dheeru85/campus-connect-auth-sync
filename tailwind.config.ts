@@ -28,6 +28,10 @@ export default {
 					DEFAULT: 'hsl(var(--primary))',
 					foreground: 'hsl(var(--primary-foreground))'
 				},
+				'campus-primary': 'hsl(var(--campus-primary))',
+				'campus-dark': 'hsl(var(--campus-dark))',
+				'campus-card': 'hsl(var(--campus-card))',
+				'campus-border': 'hsl(var(--campus-border))',
 				secondary: {
 					DEFAULT: 'hsl(var(--secondary))',
 					foreground: 'hsl(var(--secondary-foreground))'
