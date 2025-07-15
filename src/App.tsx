@@ -11,6 +11,7 @@ import MyEvents from "./pages/MyEvents";
 import Favorites from "./pages/Favorites";
 import PastEvents from "./pages/PastEvents";
 import CreateEvent from "./pages/CreateEvent";
+import EventDetails from "./pages/EventDetails";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -52,6 +53,11 @@ const App = () => (
             <Route path="/create-event" element={
               <AppLayout>
                 <CreateEvent />
+              </AppLayout>
+            } />
+            <Route path="/events/:eventId" element={
+              <AppLayout>
+                <EventDetails />
               </AppLayout>
             } />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

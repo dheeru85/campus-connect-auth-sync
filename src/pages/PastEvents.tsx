@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -22,6 +23,7 @@ interface Event {
 const PastEvents = () => {
   const [pastEvents, setPastEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
   const { toast } = useToast();
 
   useEffect(() => {
@@ -90,7 +92,11 @@ const PastEvents = () => {
       ) : (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {pastEvents.map((event) => (
-            <Card key={event.id} className="overflow-hidden hover:shadow-lg transition-shadow opacity-75">
+            <Card 
+              key={event.id} 
+              className="overflow-hidden hover:shadow-lg transition-shadow opacity-75 cursor-pointer"
+              onClick={() => navigate(`/events/${event.id}`)}
+            >
               {event.image_url && (
                 <div className="aspect-video overflow-hidden">
                   <img
