@@ -7,6 +7,10 @@ import AuthCheck from "./components/AuthCheck";
 import AppLayout from "./components/AppLayout";
 import Auth from "./pages/Auth";
 import Index from "./pages/Index";
+import MyEvents from "./pages/MyEvents";
+import Favorites from "./pages/Favorites";
+import PastEvents from "./pages/PastEvents";
+import CreateEvent from "./pages/CreateEvent";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -27,17 +31,17 @@ const App = () => (
             } />
             <Route path="/my-events" element={
               <AppLayout>
-                <div>My Events Page - Coming Soon</div>
+                <MyEvents />
               </AppLayout>
             } />
             <Route path="/favorites" element={
               <AppLayout>
-                <div>Favorites Page - Coming Soon</div>
+                <Favorites />
               </AppLayout>
             } />
             <Route path="/past-events" element={
               <AppLayout>
-                <div>Past Events Page - Coming Soon</div>
+                <PastEvents />
               </AppLayout>
             } />
             <Route path="/profile" element={
@@ -47,7 +51,7 @@ const App = () => (
             } />
             <Route path="/create-event" element={
               <AppLayout>
-                <div>Create Event Page - Coming Soon</div>
+                <CreateEvent />
               </AppLayout>
             } />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
