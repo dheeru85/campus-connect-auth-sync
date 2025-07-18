@@ -241,7 +241,7 @@ const MyEvents = () => {
       </div>
 
       <Tabs defaultValue="attending" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className={`grid w-full ${profile?.role === 'admin' ? 'grid-cols-3' : 'grid-cols-2'}`}>
           <TabsTrigger value="attending" className="flex items-center gap-2">
             <Users className="h-4 w-4" />
             Attending ({attendingEvents.length})
