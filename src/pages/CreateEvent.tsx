@@ -76,6 +76,17 @@ const CreateEvent = () => {
       // Validate dates
       const startDate = new Date(formData.start_date);
       const endDate = new Date(formData.end_date);
+      const now = new Date();
+      
+      if (startDate <= now) {
+        toast({
+          title: "Error", 
+          description: "Start date must be in the future",
+          variant: "destructive",
+        });
+        return;
+      }
+      
       if (endDate <= startDate) {
         toast({
           title: "Error",

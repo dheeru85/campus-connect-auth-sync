@@ -5,10 +5,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Calendar, MapPin, Users, ArrowLeft, Send, Video, Image as ImageIcon } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Calendar, MapPin, Users, ArrowLeft, Send, Video, Image as ImageIcon, Edit, Tag } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import VideoUpload from "@/components/VideoUpload";
+import ImageUpload from "@/components/ImageUpload";
 
 interface Event {
   id: string;
@@ -49,6 +53,7 @@ interface Attendee {
 interface Profile {
   full_name: string;
   role: 'admin' | 'user';
+  user_id: string;
 }
 
 const EventDetails = () => {
@@ -61,6 +66,17 @@ const EventDetails = () => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editForm, setEditForm] = useState({
+    title: "",
+    description: "",
+    location: "",
+    start_date: "",
+    end_date: "",
+    max_attendees: "",
+    image_url: "",
+    tags: ""
+  });
   const { toast } = useToast();
 
   useEffect(() => {
@@ -82,6 +98,20 @@ const EventDetails = () => {
 
       if (error) throw error;
       setEvent(data);
+      
+      // Initialize edit form with event data
+      if (data) {
+        setEditForm({
+          title: data.title,
+          description: data.description,
+          location: data.location,
+          start_date: data.start_date.slice(0, 16), // Format for datetime-local input
+          end_date: data.end_date.slice(0, 16),
+          max_attendees: data.max_attendees?.toString() || "",
+          image_url: data.image_url || "",
+          tags: data.tags?.join(", ") || ""
+        });
+      }
     } catch (error) {
       console.error('Error fetching event:', error);
       toast({
@@ -142,7 +172,7 @@ const EventDetails = () => {
 
       const { data, error } = await supabase
         .from('profiles')
-        .select('full_name, role')
+        .select('full_name, role, user_id')
         .eq('user_id', user.id)
         .single();
 
@@ -220,6 +250,84 @@ const EventDetails = () => {
     }
   };
 
+  const handleEditEvent = async () => {
+    if (!event || !profile || profile.role !== 'admin') return;
+
+    try {
+      // Validate required fields
+      if (!editForm.title || !editForm.description || !editForm.location || 
+          !editForm.start_date || !editForm.end_date) {
+        toast({
+          title: "Error",
+          description: "Please fill in all required fields",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Validate dates
+      const startDate = new Date(editForm.start_date);
+      const endDate = new Date(editForm.end_date);
+      
+      if (endDate <= startDate) {
+        toast({
+          title: "Error",
+          description: "End date must be after start date",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Process tags
+      const tags = editForm.tags
+        .split(',')
+        .map(tag => tag.trim())
+        .filter(tag => tag.length > 0);
+
+      const updateData = {
+        title: editForm.title,
+        description: editForm.description,
+        location: editForm.location,
+        start_date: editForm.start_date,
+        end_date: editForm.end_date,
+        max_attendees: editForm.max_attendees ? parseInt(editForm.max_attendees) : null,
+        image_url: editForm.image_url || null,
+        tags: tags.length > 0 ? tags : null
+      };
+
+      const { error } = await supabase
+        .from('events')
+        .update(updateData)
+        .eq('id', eventId);
+
+      if (error) throw error;
+
+      // Update local state
+      setEvent({ ...event, ...updateData });
+      setIsEditing(false);
+      
+      toast({
+        title: "Success",
+        description: "Event updated successfully",
+      });
+    } catch (error) {
+      console.error('Error updating event:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update event",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleImageUploaded = (url: string) => {
+    setEditForm(prev => ({ ...prev, image_url: url }));
+  };
+
+  const handleImageRemoved = () => {
+    setEditForm(prev => ({ ...prev, image_url: "" }));
+  };
+
   const formatDate = (dateString: string) => {
     return format(new Date(dateString), "EEEE, MMMM dd, yyyy 'at' h:mm a");
   };
@@ -277,14 +385,152 @@ const EventDetails = () => {
             )}
             <div className="p-6">
               <div className="flex justify-between items-start mb-4">
-                <div>
-                  <h1 className="text-3xl font-bold mb-2">{event.title}</h1>
-                  {isPastEvent && (
-                    <Badge variant="secondary" className="mb-4">
-                      Event Ended
-                    </Badge>
-                  )}
-                </div>
+                 <div>
+                   <h1 className="text-3xl font-bold mb-2">{event.title}</h1>
+                   {isPastEvent && (
+                     <Badge variant="secondary" className="mb-4">
+                       Event Ended
+                     </Badge>
+                   )}
+                 </div>
+                 {profile?.role === 'admin' && profile?.user_id === event.organizer_id && (
+                   <Dialog open={isEditing} onOpenChange={setIsEditing}>
+                     <DialogTrigger asChild>
+                       <Button variant="outline" size="sm" className="flex items-center gap-2">
+                         <Edit className="h-4 w-4" />
+                         Edit Event
+                       </Button>
+                     </DialogTrigger>
+                     <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                       <DialogHeader>
+                         <DialogTitle>Edit Event</DialogTitle>
+                       </DialogHeader>
+                       <div className="space-y-4">
+                         <div className="space-y-2">
+                           <Label htmlFor="edit-title">Event Title *</Label>
+                           <Input
+                             id="edit-title"
+                             value={editForm.title}
+                             onChange={(e) => setEditForm(prev => ({ ...prev, title: e.target.value }))}
+                             placeholder="Enter event title"
+                           />
+                         </div>
+
+                         <div className="space-y-2">
+                           <Label htmlFor="edit-description">Description *</Label>
+                           <Textarea
+                             id="edit-description"
+                             value={editForm.description}
+                             onChange={(e) => setEditForm(prev => ({ ...prev, description: e.target.value }))}
+                             placeholder="Describe your event..."
+                             rows={4}
+                           />
+                         </div>
+
+                         <div className="space-y-2">
+                           <Label htmlFor="edit-location">Location *</Label>
+                           <div className="relative">
+                             <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                             <Input
+                               id="edit-location"
+                               value={editForm.location}
+                               onChange={(e) => setEditForm(prev => ({ ...prev, location: e.target.value }))}
+                               placeholder="Event location"
+                               className="pl-10"
+                             />
+                           </div>
+                         </div>
+
+                         <div className="grid grid-cols-2 gap-4">
+                           <div className="space-y-2">
+                             <Label htmlFor="edit-start-date">Start Date & Time *</Label>
+                             <div className="relative">
+                               <Calendar className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                               <Input
+                                 id="edit-start-date"
+                                 type="datetime-local"
+                                 value={editForm.start_date}
+                                 onChange={(e) => setEditForm(prev => ({ ...prev, start_date: e.target.value }))}
+                                 className="pl-10"
+                               />
+                             </div>
+                           </div>
+
+                           <div className="space-y-2">
+                             <Label htmlFor="edit-end-date">End Date & Time *</Label>
+                             <div className="relative">
+                               <Calendar className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                               <Input
+                                 id="edit-end-date"
+                                 type="datetime-local"
+                                 value={editForm.end_date}
+                                 onChange={(e) => setEditForm(prev => ({ ...prev, end_date: e.target.value }))}
+                                 className="pl-10"
+                               />
+                             </div>
+                           </div>
+                         </div>
+
+                         <div className="space-y-2">
+                           <Label htmlFor="edit-max-attendees">Maximum Attendees</Label>
+                           <div className="relative">
+                             <Users className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                             <Input
+                               id="edit-max-attendees"
+                               type="number"
+                               value={editForm.max_attendees}
+                               onChange={(e) => setEditForm(prev => ({ ...prev, max_attendees: e.target.value }))}
+                               placeholder="Leave empty for unlimited"
+                               className="pl-10"
+                               min="1"
+                             />
+                           </div>
+                         </div>
+
+                         <div className="space-y-2">
+                           <Label>Event Image</Label>
+                           <ImageUpload
+                             onImageUploaded={handleImageUploaded}
+                             currentImage={editForm.image_url}
+                             onImageRemoved={handleImageRemoved}
+                           />
+                         </div>
+
+                         <div className="space-y-2">
+                           <Label htmlFor="edit-tags">Tags</Label>
+                           <div className="relative">
+                             <Tag className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                             <Input
+                               id="edit-tags"
+                               value={editForm.tags}
+                               onChange={(e) => setEditForm(prev => ({ ...prev, tags: e.target.value }))}
+                               placeholder="tech, networking, workshop (separate with commas)"
+                               className="pl-10"
+                             />
+                           </div>
+                         </div>
+
+                         <div className="flex gap-4 pt-4">
+                           <Button
+                             type="button"
+                             variant="outline"
+                             onClick={() => setIsEditing(false)}
+                             className="flex-1"
+                           >
+                             Cancel
+                           </Button>
+                           <Button
+                             type="button"
+                             onClick={handleEditEvent}
+                             className="flex-1"
+                           >
+                             Save Changes
+                           </Button>
+                         </div>
+                       </div>
+                     </DialogContent>
+                   </Dialog>
+                 )}
               </div>
               
               <p className="text-muted-foreground mb-6">{event.description}</p>

@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search, Grid, Calendar, MapPin, Users, Heart } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay, isSameDay, parseISO } from "date-fns";
@@ -402,26 +403,26 @@ const Index = () => {
       </div>
 
       {/* View Toggle */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Button 
-            variant={viewMode === 'grid' ? 'default' : 'outline'} 
-            size="sm"
+      <Tabs value={viewMode} className="w-full">
+        <TabsList className="grid w-full grid-cols-2 max-w-md">
+          <TabsTrigger 
+            value="grid" 
+            className="flex items-center gap-2"
             onClick={() => setViewMode('grid')}
           >
-            <Grid className="h-4 w-4 mr-2" />
+            <Grid className="h-4 w-4" />
             Grid View
-          </Button>
-          <Button 
-            variant={viewMode === 'calendar' ? 'default' : 'outline'} 
-            size="sm"
+          </TabsTrigger>
+          <TabsTrigger 
+            value="calendar" 
+            className="flex items-center gap-2"
             onClick={() => setViewMode('calendar')}
           >
-            <Calendar className="h-4 w-4 mr-2" />
+            <Calendar className="h-4 w-4" />
             Calendar View
-          </Button>
-        </div>
-      </div>
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>
 
       {/* Events Display */}
       {viewMode === 'calendar' ? (
