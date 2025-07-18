@@ -56,7 +56,7 @@ const App = () => (
                 <CreateEvent />
               </AppLayout>
             } />
-            <Route path="/event/:eventId" element={
+            <Route path="/events/:eventId" element={
               <AppLayout>
                 <EventDetails />
               </AppLayout>

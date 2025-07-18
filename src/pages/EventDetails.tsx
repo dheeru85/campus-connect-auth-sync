@@ -407,7 +407,10 @@ const EventDetails = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <VideoUpload onVideoUploaded={handleVideoUploaded} />
+              <VideoUpload 
+                onVideoUploaded={handleVideoUploaded} 
+                disabled={profile?.role !== 'admin'}
+              />
             </CardContent>
           </Card>
         )}

@@ -39,6 +39,7 @@ const Index = () => {
   const [viewMode, setViewMode] = useState<'grid' | 'calendar'>('grid');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [registeredEvents, setRegisteredEvents] = useState<Set<string>>(new Set());
+  const [favoriteEvents, setFavoriteEvents] = useState<Set<string>>(new Set());
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -78,7 +79,7 @@ const Index = () => {
         
         setEvents(eventsWithCounts);
 
-        // Get user's registered events
+        // Get user's registered events and favorites
         if (user) {
           const { data: attendeeData } = await supabase
             .from('event_attendees')
@@ -87,6 +88,15 @@ const Index = () => {
           
           if (attendeeData) {
             setRegisteredEvents(new Set(attendeeData.map(a => a.event_id)));
+          }
+
+          const { data: favoriteData } = await supabase
+            .from('event_favorites')
+            .select('event_id')
+            .eq('user_id', user.id);
+          
+          if (favoriteData) {
+            setFavoriteEvents(new Set(favoriteData.map(f => f.event_id)));
           }
         }
       } catch (error) {
@@ -194,6 +204,65 @@ const Index = () => {
     }
   };
 
+  const handleToggleFavorite = async (eventId: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({
+          title: "Authentication required",
+          description: "Please sign in to add favorites",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const isFavorited = favoriteEvents.has(eventId);
+
+      if (isFavorited) {
+        // Remove from favorites
+        const { error } = await supabase
+          .from('event_favorites')
+          .delete()
+          .eq('event_id', eventId)
+          .eq('user_id', user.id);
+
+        if (error) throw error;
+
+        setFavoriteEvents(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(eventId);
+          return newSet;
+        });
+
+        toast({
+          title: "Removed from favorites",
+          description: "Event removed from your favorites",
+        });
+      } else {
+        // Add to favorites
+        const { error } = await supabase
+          .from('event_favorites')
+          .insert({ event_id: eventId, user_id: user.id });
+
+        if (error) throw error;
+
+        setFavoriteEvents(prev => new Set([...prev, eventId]));
+
+        toast({
+          title: "Added to favorites",
+          description: "Event added to your favorites",
+        });
+      }
+    } catch (error) {
+      console.error('Error toggling favorite:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update favorites",
+        variant: "destructive",
+      });
+    }
+  };
+
   const renderCalendarView = () => {
     const monthStart = startOfMonth(currentDate);
     const monthEnd = endOfMonth(currentDate);
@@ -269,7 +338,7 @@ const Index = () => {
                     <div
                       key={event.id}
                       className="text-xs p-1 bg-primary/10 text-primary rounded cursor-pointer hover:bg-primary/20"
-                      onClick={() => navigate(`/event/${event.id}`)}
+                      onClick={() => navigate(`/events/${event.id}`)}
                     >
                       {event.title}
                     </div>
@@ -306,11 +375,6 @@ const Index = () => {
           <h1 className="text-3xl font-bold text-campus-dark">Discover Events</h1>
           <p className="text-muted-foreground">Find and join exciting campus activities</p>
         </div>
-        {profile?.role === 'admin' && (
-          <Button className="bg-campus-dark hover:bg-campus-dark/90">
-            Create Event
-          </Button>
-        )}
       </div>
 
       {/* Search and Filters */}
@@ -387,8 +451,15 @@ const Index = () => {
                   <CardHeader className="pb-3">
                     <div className="flex items-start justify-between">
                       <CardTitle className="text-lg leading-tight">{event.title}</CardTitle>
-                      <Button variant="ghost" size="sm">
-                        <Heart className="h-4 w-4" />
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleToggleFavorite(event.id);
+                        }}
+                      >
+                        <Heart className={`h-4 w-4 ${favoriteEvents.has(event.id) ? 'fill-red-500 text-red-500' : ''}`} />
                       </Button>
                     </div>
                     <CardDescription className="line-clamp-2">
@@ -439,7 +510,7 @@ const Index = () => {
                       <Button 
                         variant="outline" 
                         className="flex-1"
-                        onClick={() => navigate(`/event/${event.id}`)}
+                       onClick={() => navigate(`/events/${event.id}`)}
                       >
                         View Details
                       </Button>

@@ -7,9 +7,10 @@ import { useToast } from "@/hooks/use-toast";
 
 interface VideoUploadProps {
   onVideoUploaded: (url: string) => void;
+  disabled?: boolean;
 }
 
-const VideoUpload = ({ onVideoUploaded }: VideoUploadProps) => {
+const VideoUpload = ({ onVideoUploaded, disabled = false }: VideoUploadProps) => {
   const [uploading, setUploading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -151,6 +152,7 @@ const VideoUpload = ({ onVideoUploaded }: VideoUploadProps) => {
                 variant="outline"
                 onClick={() => fileInputRef.current?.click()}
                 className="flex items-center gap-2"
+                disabled={disabled || uploading}
               >
                 <Upload className="h-4 w-4" />
                 Choose Video
@@ -166,6 +168,7 @@ const VideoUpload = ({ onVideoUploaded }: VideoUploadProps) => {
         accept="video/*"
         onChange={handleFileSelect}
         className="hidden"
+        disabled={disabled}
       />
     </div>
   );
