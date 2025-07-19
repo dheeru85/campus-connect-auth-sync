@@ -454,14 +454,16 @@ const Index = () => {
                     <div className="flex items-start justify-between">
                       <CardTitle className="text-lg leading-tight">{event.title}</CardTitle>
                       <div className="flex items-center gap-1">
-                        {profile?.role === 'admin' && profile?.user_id === event.organizer_id && (
+                        {profile?.role === 'admin' && (
                           <>
                             <Button 
                               variant="ghost" 
                               size="sm"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                navigate(`/events/${event.id}?edit=true`);
+                                const url = `/events/${event.id}?edit=true`;
+                                console.log('Navigating to:', url);
+                                navigate(url);
                               }}
                             >
                               <Edit className="h-4 w-4" />
@@ -471,7 +473,9 @@ const Index = () => {
                               size="sm"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                navigate(`/events/${event.id}?delete=true`);
+                                const url = `/events/${event.id}?delete=true`;
+                                console.log('Navigating to:', url);
+                                navigate(url);
                               }}
                             >
                               <Trash2 className="h-4 w-4" />

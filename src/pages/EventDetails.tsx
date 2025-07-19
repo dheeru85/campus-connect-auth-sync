@@ -97,7 +97,7 @@ const EventDetails = () => {
     console.log('User ID:', profile?.user_id);
     console.log('Event organizer:', event?.organizer_id);
     
-    if (editParam === 'true' && profile?.role === 'admin' && event && profile?.user_id === event.organizer_id) {
+    if (editParam === 'true' && profile?.role === 'admin' && event) {
       console.log('Setting edit mode to true');
       setIsEditing(true);
       // Clear the URL parameter to avoid confusion
@@ -410,7 +410,7 @@ const EventDetails = () => {
                      </Badge>
                    )}
                  </div>
-                 {profile?.role === 'admin' && profile?.user_id === event.organizer_id && (
+                 {profile?.role === 'admin' && (
                    <Dialog open={isEditing} onOpenChange={setIsEditing}>
                      <DialogTrigger asChild>
                        <Button variant="outline" size="sm" className="flex items-center gap-2">
