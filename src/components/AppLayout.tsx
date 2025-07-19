@@ -87,10 +87,11 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
               <h1 className="text-xl font-bold">Campus Connect</h1>
             </Link>
 
-            <nav className="hidden md:flex items-center space-x-1">
+            {/* Mobile and Desktop Navigation */}
+            <nav className="flex md:flex items-center space-x-1 overflow-x-auto scrollbar-hide">
               <Button 
                 variant={isActive('/') ? "secondary" : "ghost"} 
-                className="text-white hover:bg-white/10"
+                className={isActive('/') ? "text-foreground" : "text-white hover:bg-white/10"}
                 asChild
               >
                 <Link to="/">
@@ -100,7 +101,7 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
               </Button>
               <Button 
                 variant={isActive('/my-events') ? "secondary" : "ghost"} 
-                className="text-white hover:bg-white/10"
+                className={isActive('/my-events') ? "text-foreground" : "text-white hover:bg-white/10"}
                 asChild
               >
                 <Link to="/my-events">
@@ -110,7 +111,7 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
               </Button>
               <Button 
                 variant={isActive('/favorites') ? "secondary" : "ghost"} 
-                className="text-white hover:bg-white/10"
+                className={isActive('/favorites') ? "text-foreground" : "text-white hover:bg-white/10"}
                 asChild
               >
                 <Link to="/favorites">
@@ -120,7 +121,7 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
               </Button>
               <Button 
                 variant={isActive('/past-events') ? "secondary" : "ghost"} 
-                className="text-white hover:bg-white/10"
+                className={isActive('/past-events') ? "text-foreground" : "text-white hover:bg-white/10"}
                 asChild
               >
                 <Link to="/past-events">
@@ -130,16 +131,31 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
               </Button>
               
               {profile?.role === 'admin' && (
-                <Button 
-                  variant="ghost" 
-                  className="text-white hover:bg-white/10"
-                  asChild
-                >
-                  <Link to="/create-event">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Create Event
-                  </Link>
-                </Button>
+                <>
+                  <Button 
+                    variant="ghost" 
+                    className="text-white hover:bg-white/10"
+                    asChild
+                  >
+                    <Link to="/create-event">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Create Event
+                    </Link>
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    className="text-white hover:bg-white/10"
+                    onClick={() => {
+                      toast({
+                        title: "Delete Event",
+                        description: "Navigate to an event details page to delete it.",
+                      });
+                    }}
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete Event
+                  </Button>
+                </>
               )}
             </nav>
 
