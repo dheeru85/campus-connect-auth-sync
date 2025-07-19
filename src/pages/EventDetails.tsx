@@ -88,6 +88,14 @@ const EventDetails = () => {
     }
   }, [eventId]);
 
+  // Check URL params for edit mode
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('edit') === 'true' && profile?.role === 'admin') {
+      setIsEditing(true);
+    }
+  }, [profile]);
+
   const fetchEventDetails = async () => {
     try {
       const { data, error } = await supabase

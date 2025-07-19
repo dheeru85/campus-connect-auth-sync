@@ -88,7 +88,7 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
             </Link>
 
             {/* Mobile and Desktop Navigation */}
-            <nav className="flex md:flex items-center space-x-1 overflow-x-auto scrollbar-hide">
+            <nav className="flex md:flex items-center space-x-1 overflow-x-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/20 hover:scrollbar-thumb-white/40">
               <Button 
                 variant={isActive('/') ? "secondary" : "ghost"} 
                 className={isActive('/') ? "text-foreground" : "text-white hover:bg-white/10"}

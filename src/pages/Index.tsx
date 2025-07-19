@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Grid, Calendar, MapPin, Users, Heart } from "lucide-react";
+import { Search, Grid, Calendar, MapPin, Users, Heart, Edit, Trash2 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
@@ -29,6 +29,7 @@ interface Event {
 interface Profile {
   full_name: string;
   role: 'admin' | 'user';
+  user_id: string;
 }
 
 const Index = () => {
@@ -52,7 +53,7 @@ const Index = () => {
         if (user) {
           const { data: profileData } = await supabase
             .from('profiles')
-            .select('full_name, role')
+            .select('full_name, role, user_id')
             .eq('user_id', user.id)
             .single();
           
@@ -452,16 +453,42 @@ const Index = () => {
                   <CardHeader className="pb-3">
                     <div className="flex items-start justify-between">
                       <CardTitle className="text-lg leading-tight">{event.title}</CardTitle>
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleToggleFavorite(event.id);
-                        }}
-                      >
-                        <Heart className={`h-4 w-4 ${favoriteEvents.has(event.id) ? 'fill-red-500 text-red-500' : ''}`} />
-                      </Button>
+                      <div className="flex items-center gap-1">
+                        {profile?.role === 'admin' && profile?.user_id === event.organizer_id && (
+                          <>
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(`/events/${event.id}?edit=true`);
+                              }}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(`/events/${event.id}?delete=true`);
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </>
+                        )}
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleToggleFavorite(event.id);
+                          }}
+                        >
+                          <Heart className={`h-4 w-4 ${favoriteEvents.has(event.id) ? 'fill-red-500 text-red-500' : ''}`} />
+                        </Button>
+                      </div>
                     </div>
                     <CardDescription className="line-clamp-2">
                       {event.description}
