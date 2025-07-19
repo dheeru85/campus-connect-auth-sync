@@ -91,10 +91,19 @@ const EventDetails = () => {
   // Check URL params for edit mode
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('edit') === 'true' && profile?.role === 'admin') {
+    const editParam = urlParams.get('edit');
+    console.log('Checking edit parameter:', editParam);
+    console.log('Profile role:', profile?.role);
+    console.log('User ID:', profile?.user_id);
+    console.log('Event organizer:', event?.organizer_id);
+    
+    if (editParam === 'true' && profile?.role === 'admin' && event && profile?.user_id === event.organizer_id) {
+      console.log('Setting edit mode to true');
       setIsEditing(true);
+      // Clear the URL parameter to avoid confusion
+      window.history.replaceState({}, document.title, window.location.pathname);
     }
-  }, [profile]);
+  }, [profile, event]);
 
   const fetchEventDetails = async () => {
     try {
