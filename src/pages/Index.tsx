@@ -24,6 +24,16 @@ interface Event {
   category_id?: string;
   tags?: string[];
   attendee_count?: number;
+  event_categories?: {
+    name: string;
+    color: string;
+  };
+}
+
+interface Category {
+  id: string;
+  name: string;
+  color: string;
 }
 
 interface Profile {
@@ -34,6 +44,7 @@ interface Profile {
 
 const Index = () => {
   const [events, setEvents] = useState<Event[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
@@ -62,12 +73,23 @@ const Index = () => {
           }
         }
 
-        // Get events with attendee counts
+        // Get categories
+        const { data: categoriesData } = await supabase
+          .from('event_categories')
+          .select('id, name, color')
+          .order('name');
+        
+        if (categoriesData) {
+          setCategories(categoriesData);
+        }
+
+        // Get events with attendee counts and categories
         const { data: eventsData, error } = await supabase
           .from('events')
           .select(`
             *,
-            event_attendees(count)
+            event_attendees(count),
+            event_categories(name, color)
           `)
           .gte('end_date', new Date().toISOString())
           .order('start_date', { ascending: true });
@@ -354,10 +376,14 @@ const Index = () => {
     );
   };
 
-  const filteredEvents = events.filter(event => 
-    event.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    event.description.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredEvents = events.filter(event => {
+    const matchesSearch = event.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      event.description.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesCategory = selectedCategory === "all" || event.category_id === selectedCategory;
+    
+    return matchesSearch && matchesCategory;
+  });
 
   if (loading) {
     return (
@@ -396,34 +422,44 @@ const Index = () => {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Categories</SelectItem>
-            <SelectItem value="sports">Sports</SelectItem>
-            <SelectItem value="academic">Academic</SelectItem>
-            <SelectItem value="social">Social</SelectItem>
+            {categories.map((category) => (
+              <SelectItem key={category.id} value={category.id}>
+                <div className="flex items-center gap-2">
+                  <div 
+                    className="w-3 h-3 rounded-full" 
+                    style={{ backgroundColor: category.color }}
+                  />
+                  <span>{category.name}</span>
+                </div>
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>
 
       {/* View Toggle */}
-      <Tabs value={viewMode} className="w-full">
-        <TabsList className="grid w-full grid-cols-2 max-w-md">
-          <TabsTrigger 
-            value="grid" 
-            className="flex items-center gap-2"
-            onClick={() => setViewMode('grid')}
-          >
-            <Grid className="h-4 w-4" />
-            Grid View
-          </TabsTrigger>
-          <TabsTrigger 
-            value="calendar" 
-            className="flex items-center gap-2"
-            onClick={() => setViewMode('calendar')}
-          >
-            <Calendar className="h-4 w-4" />
-            Calendar View
-          </TabsTrigger>
-        </TabsList>
-      </Tabs>
+      <div className="flex items-center justify-between">
+        <Tabs value={viewMode} className="w-full">
+          <TabsList className="grid w-full grid-cols-2 max-w-md">
+            <TabsTrigger 
+              value="grid" 
+              className="flex items-center gap-2"
+              onClick={() => setViewMode('grid')}
+            >
+              <Grid className="h-4 w-4" />
+              Grid View
+            </TabsTrigger>
+            <TabsTrigger 
+              value="calendar" 
+              className="flex items-center gap-2"
+              onClick={() => setViewMode('calendar')}
+            >
+              <Calendar className="h-4 w-4" />
+              Calendar View
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+      </div>
 
       {/* Events Display */}
       {viewMode === 'calendar' ? (
@@ -517,15 +553,26 @@ const Index = () => {
                       </div>
                     </div>
                     
-                    {event.tags && event.tags.length > 0 && (
-                      <div className="flex flex-wrap gap-1">
-                        {event.tags.slice(0, 2).map((tag, index) => (
-                          <Badge key={index} variant="secondary" className="text-xs">
-                            {tag}
-                          </Badge>
-                        ))}
-                      </div>
-                    )}
+                    <div className="flex flex-wrap gap-1">
+                      {event.event_categories && (
+                        <Badge 
+                          variant="secondary" 
+                          className="text-xs"
+                          style={{ 
+                            backgroundColor: `${event.event_categories.color}20`,
+                            color: event.event_categories.color,
+                            borderColor: event.event_categories.color
+                          }}
+                        >
+                          {event.event_categories.name}
+                        </Badge>
+                      )}
+                      {event.tags && event.tags.length > 0 && event.tags.slice(0, 2).map((tag, index) => (
+                        <Badge key={index} variant="secondary" className="text-xs">
+                          {tag}
+                        </Badge>
+                      ))}
+                    </div>
                     
                     <div className="flex gap-2 pt-2">
                       <Button 

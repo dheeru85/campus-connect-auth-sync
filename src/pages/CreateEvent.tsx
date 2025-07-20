@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import ImageUpload from "@/components/ImageUpload";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,9 +6,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Calendar, MapPin, Users, Image, Tag } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Calendar, MapPin, Users, Image, Tag, Folder } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
+
+interface Category {
+  id: string;
+  name: string;
+  color: string;
+  description: string;
+}
 
 const CreateEvent = () => {
   const [formData, setFormData] = useState({
@@ -19,11 +27,30 @@ const CreateEvent = () => {
     end_date: "",
     max_attendees: "",
     image_url: "",
-    tags: ""
+    tags: "",
+    category_id: ""
   });
+  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      const { data, error } = await supabase
+        .from('event_categories')
+        .select('id, name, color, description')
+        .order('name');
+      
+      if (error) {
+        console.error('Error fetching categories:', error);
+      } else {
+        setCategories(data || []);
+      }
+    };
+
+    fetchCategories();
+  }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -111,7 +138,8 @@ const CreateEvent = () => {
         organizer_id: user.id,
         max_attendees: formData.max_attendees ? parseInt(formData.max_attendees) : null,
         image_url: formData.image_url || null,
-        tags: tags.length > 0 ? tags : null
+        tags: tags.length > 0 ? tags : null,
+        category_id: formData.category_id || null
       };
 
       const { error } = await supabase
@@ -177,6 +205,31 @@ const CreateEvent = () => {
                 rows={4}
                 required
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="category_id">Category *</Label>
+              <div className="relative">
+                <Folder className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Select value={formData.category_id} onValueChange={(value) => setFormData(prev => ({ ...prev, category_id: value }))}>
+                  <SelectTrigger className="pl-10">
+                    <SelectValue placeholder="Select a category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map((category) => (
+                      <SelectItem key={category.id} value={category.id}>
+                        <div className="flex items-center gap-2">
+                          <div 
+                            className="w-3 h-3 rounded-full" 
+                            style={{ backgroundColor: category.color }}
+                          />
+                          <span>{category.name}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             <div className="space-y-2">

@@ -131,31 +131,16 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
               </Button>
               
               {profile?.role === 'admin' && (
-                <>
-                  <Button 
-                    variant="ghost" 
-                    className="text-white hover:bg-white/10"
-                    asChild
-                  >
-                    <Link to="/create-event">
-                      <Plus className="h-4 w-4 mr-2" />
-                      Create Event
-                    </Link>
-                  </Button>
-                  <Button 
-                    variant="ghost" 
-                    className="text-white hover:bg-white/10"
-                    onClick={() => {
-                      toast({
-                        title: "Delete Event",
-                        description: "Navigate to an event details page to delete it.",
-                      });
-                    }}
-                  >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Delete Event
-                  </Button>
-                </>
+                <Button 
+                  variant="ghost" 
+                  className="text-white hover:bg-white/10"
+                  asChild
+                >
+                  <Link to="/create-event">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create Event
+                  </Link>
+                </Button>
               )}
             </nav>
 
